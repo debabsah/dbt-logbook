@@ -1,68 +1,61 @@
-# TODOS
+# Roadmap notes
 
-## Windows `exec` support
-- **What:** CTRL_BREAK_EVENT / job-object process handling for the exec wrapper + a Windows CI leg.
-- **Why:** the SQL Server pitch targets a Windows-heavy audience, and `exec` is their history-capture path.
-- **Pros:** unlocks the audience the SQL Server claim courts.
-- **Cons:** platform-specific process code; CI minutes; zero users until launch proves demand.
-- **Context:** `exec` is documented as unsupported on Windows since v0.1 (POSIX signal semantics). `ui`/`import` are pure Python and likely fine untested. Decision from the 2026-07-03 plan review: "unsupported, not untested".
-- **Blocked by:** public launch + demand signal (Windows users filing issues).
+What's deferred and why. Items marked "demand-gated" ship when real usage
+asks for them - open an issue if one of these is blocking you.
 
-## ~~SQLite vs DuckDB engine evaluation~~ RESOLVED 2026-07-03
-Benchmarked at 1000 runs x 30 nodes (30k node_results, ~10x a busy year of
-hourly cron): worst MCP-shaped query (regression scan) 17ms; model history
-0.6ms; what-broke 0.2ms. SQLite locked as the engine for the v0.2 contract -
-DuckDB would add a dependency to save milliseconds invisible over MCP stdio.
+## Windows `exec` support (demand-gated)
+`exec` relies on POSIX signal semantics (SIGINT forwarding, process groups)
+and is documented as unsupported on Windows. `ui`, `import`, `demo`, and
+`mcp` are pure Python and should work, but are untested there. Supporting
+`exec` needs CTRL_BREAK_EVENT / job-object handling plus a Windows CI leg.
+Open an issue if you'd use it.
 
-## UI framework rebuild (deferred at v0.5)
-- **What:** vanilla JS -> a component framework (the design doc scheduled this "as screen count grows").
-- **Why deferred:** at 6 views the hash-router + render-function structure is ~600 lines, has no state-sync bugs, and keeps the no-build-step property that makes contributions easy. The ceiling hasn't hurt yet.
-- **Revisit when:** a screen needs client-side state shared across views (live updates, filters that persist), or app.js crosses ~1000 lines.
+## UI framework rebuild (deferred)
+The UI is deliberately vanilla JS with no build step: at the current screen
+count the hash-router + render-function structure is small, has no state-sync
+bugs, and keeps contributions easy. Revisit when a screen needs client-side
+state shared across views (live updates, persistent filters) or app.js
+crosses ~1000 lines.
 
-## ~~CI pull-request comments~~ SHIPPED v0.6 (ci-report command + workflow snippet)
-- **What:** a GitHub Action (GitLab later) that comments on PRs: changed models (checksum diff vs last-good state), impacted downstream models, failed/new tests, duration regressions, and a safe/risky-to-merge summary with a link to run details.
-- **Why:** the most commercially legible feature in the operations-layer positioning; removes the most annoying dbt Core CI pain (storing, retrieving, comparing the right state artifacts).
-- **Pros:** builds ENTIRELY on shipped surfaces (diff_runs, find_regressions, what_broke, /api/state); no new premises, no new deps.
-- **Cons:** CI platform surface area (Actions semantics, PR permissions, comment dedup).
-- **Context:** accepted from an outside product review (2026-07-03) as the strongest aligned addition; pulled forward of launch because a PR comment is also distribution.
+## Storage engine: SQLite (decided, benchmarked)
+Benchmarked at 1000 runs x 30 nodes (30k node_results, roughly 10x a busy
+year of hourly runs): the worst query (regression scan) takes 17ms; model
+history 0.6ms. SQLite stays - a second engine would add a dependency and an
+ops burden to save milliseconds that are invisible over MCP stdio or a local
+UI. Revisit only with evidence SQLite is an actual bottleneck.
 
-## Cost-aware operations (three tiers; owner-approved direction 2026-07-03)
-The instinct "cost-aware compiler" resolved to cost-aware OPERATIONS: cost is
-one more per-node time series, so every shipped mechanism (history, regression
-detection, diff, PR reporting, MCP) applies to dollars. Explicitly NOT a SQL
-rewriter/optimizer: that requires per-dialect SQL comprehension (Fusion's and
-SQLMesh's decade-long fight), inverts our observe-only trust model, and the
-warehouse optimizer already does it better.
+## Cost visibility: what ships and what doesn't
+Cost is treated as one more per-node time series over the store. Deliberately
+NOT a SQL rewriter/optimizer: that requires per-dialect SQL comprehension,
+inverts the observe-only trust model, and the warehouse optimizer already
+does it better.
 
-- **Tier 1 - SHIPPED v0.6:** duration x configurable
-  cost-rate per env = estimated compute cost for ANY warehouse/lakehouse
-  (labeled "estimated"); exact bytes_billed/bytes_processed where
-  adapter_response provides it (BigQuery - already stored). Health screen
-  spend view + get_cost_summary MCP tool.
-- **Tier 2 - SHIPPED v0.6:** ci-report flags models running slower than
-  their own history with per-run cost deltas, right on the PR - cost
-  awareness at merge time, where the decision happens. (BigQuery dry-run
-  scan-delta prediction deferred to Tier 2.5, demand-gated.)
-- **Tier 3 - DEMAND-GATED (credentials):** query-history joins (Snowflake
-  QUERY_HISTORY, BQ jobs, Databricks) for exact attribution; cost-aware
-  scheduling ADVICE ("hourly schedule on a daily-changing source burns
-  $N/mo"). Advice only - automatic data-aware skipping stays declared
-  unreachable from artifacts; no dishonest claims.
-- **Positioning clause (live since v0.6):** "watches your runs and your
-  spend."
+- Shipped: duration x configured rate for universal estimates; exact
+  bytes_processed/bytes_billed where the adapter reports them (BigQuery);
+  Health spend view; get_cost_summary MCP tool; per-run cost deltas on
+  ci-report regressions.
+- Deferred (demand-gated): BigQuery dry-run scan-delta prediction for changed
+  models on PRs; warehouse query-history joins (Snowflake QUERY_HISTORY, BQ
+  jobs, Databricks) for exact attribution - these need credentials, which
+  breaks the zero-config default, so they wait for users who want the trade;
+  cost-aware scheduling advice ("this hourly schedule on a daily-changing
+  source burns $N/month"). Advice only - automatic data-aware rebuild
+  skipping cannot be done correctly from artifacts alone, so it is out of
+  scope rather than half-done.
 
-## Team/server mode (DEMAND-GATED)
-- **What:** shared multi-user deployment: users/roles, audit trail, backup tooling, possibly multi-project.
-- **Trigger:** repeated issues from teams actually running `serve` on shared boxes and hitting the single-token ceiling.
-- **Explicitly rejected for now:** a Postgres backend. SQLite is locked into the v0.2 contract by benchmark (worst query 17ms at 10x scale); a second engine kills zero-config and doubles the storage path forever. Revisit only with evidence SQLite is the actual bottleneck.
+## Team/server mode (demand-gated)
+Shared multi-user deployment: users/roles, audit trail, backup tooling,
+multi-project. Waits for teams actually running `serve` on shared boxes and
+hitting the single-token ceiling. A Postgres backend is explicitly not
+planned (see the SQLite note above) - it would end zero-config and double the
+storage path.
 
-## Warehouse query-history cost integrations (DEMAND-GATED)
-- **What:** map dbt nodes to Snowflake/BigQuery/Databricks query history for real cost-per-model.
-- **Trigger:** users asking for cost attribution beyond adapter_response signals, and willing to provide read-only warehouse credentials.
-- **Why gated:** requires credentials + a per-warehouse integration treadmill - breaks the zero-config premise that every review round confirmed as the differentiator.
+## Incident workflow (demand-gated)
+Acknowledge/mute alerts, owner routing, incident timelines. The primitives
+(flaky tracking, failure-to-change attribution via diff) already exist;
+workflow features wait for feedback from real `serve` deployments about
+alert volume.
 
-## Incident workflow layer (DEMAND-GATED)
-- **What:** acknowledge/mute alerts, owner routing, incident timelines, postmortem generation.
-- **Trigger:** alert volume feedback from real serve deployments (people drowning in webhook noise).
-- **Why gated:** building incident management before anyone receives alerts is PagerDuty-lite cosplay. The primitives (flaky tracking, failure-to-change attribution via diff) already exist.
-
+## GitLab CI support (demand-gated)
+`ci-report` emits plain markdown, so any CI can post it; the documented
+workflow is GitHub-first. A GitLab MR example lands when someone asks.

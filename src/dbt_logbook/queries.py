@@ -136,8 +136,8 @@ def find_regressions(conn: sqlite3.Connection, factor: float = 2.0,
 
 def flaky_nodes(conn: sqlite3.Connection, window: int = 20, min_flips: int = 2) -> list[dict]:
     """Nodes whose pass/fail status flipped >= min_flips times in the last
-    `window` runs. ponytail: checksum-blind - a code fix that repairs a node
-    counts as one flip; good enough until someone asks for better."""
+    `window` runs. Checksum-blind by design: a code fix that repairs a node
+    counts as one flip; refine if real usage needs better."""
     node_ids = [
         r["unique_id"]
         for r in conn.execute("SELECT DISTINCT unique_id FROM node_results").fetchall()

@@ -22,8 +22,8 @@ Config lives in dbt-logbook.yml at the project root:
       on: [failure, recovery]   # default
 
 Jobs run sequentially - dbt invocations on one project must not overlap.
-# ponytail: single runner thread + 30s tick; a job queue if concurrency is
-# ever actually needed.
+# Deliberately a single runner thread with a 30s tick; a job queue can come
+# if concurrent schedules are ever actually needed.
 """
 
 from __future__ import annotations
@@ -202,7 +202,7 @@ def watcher_loop(project_dir: Path, target_dir: Path, env: str | None,
                  stop: threading.Event, interval: int = 5) -> None:
     """Poll target/run_results.json mtime; ingest on change. Idempotent
     ingest makes re-seeing a wrapper-captured run a no-op.
-    # ponytail: mtime polling over a watchdog dependency - 5s latency is fine."""
+    # Plain mtime polling instead of a watcher dependency - 5s latency is fine."""
     from .ingest import ingest_target_dir
 
     last_mtime = 0.0

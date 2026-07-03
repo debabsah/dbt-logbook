@@ -3,8 +3,8 @@
 Tolerant narrow extraction: pull the ~dozen shallow fields we need with .get(),
 keep the raw gzipped JSON so anything missed is recoverable later. Never
 validate whole documents against a schema - a new dbt version at worst yields
-None fields, never a crash. Verified against dbt 1.11 and 2.0-alpha artifacts
-(docs/recon-v2-artifacts.md).
+None fields, never a crash. Verified against golden artifacts of dbt 1.7
+through 2.0 (docs/compatibility.md).
 """
 
 from __future__ import annotations

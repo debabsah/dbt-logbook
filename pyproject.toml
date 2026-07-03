@@ -29,7 +29,7 @@ packages = ["src/dbt_logbook"]
 [tool.hatch.build.targets.sdist]
 # Default-deny: only what a package consumer needs. Keeps repo-internal docs
 # and scratch dirs out of published artifacts permanently.
-include = ["src", "tests", "README.md", "LICENSE"]
+include = ["src", "tests", "README.md", "LICENSE", "NOTICE"]
 
 [dependency-groups]
 dev = ["pytest>=8", "httpx>=0.27"]

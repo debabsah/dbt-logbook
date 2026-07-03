@@ -156,8 +156,8 @@ cost:
 dbt-logbook reads only dbt's stable surfaces - the CLI and the artifact files
 (`manifest.json`, `run_results.json`) - and never imports dbt internals. That is
 why it works unchanged across dbt Core 1.7 through 2.0 (tested against golden
-artifacts of 1.7, 1.8, 1.10, 1.11, and 2.0-alpha), and why it needs no dbt
-installation of its own.
+artifacts of every supported version - see [docs/compatibility.md](docs/compatibility.md)),
+and why it needs no dbt installation of its own.
 
 Every run's artifacts land in `.dbtlogbook/history.db` (SQLite; add
 `.dbtlogbook/` to your project's `.gitignore`). Manifests are content-hashed and
@@ -181,12 +181,10 @@ nodes (status flips across recent runs), and source freshness over time (from
 
 ## Roadmap
 
-v0.5 is current. What ships next is decided by real usage, not by us guessing;
-the leading candidate for v0.6 is **CI pull-request comments** - changed
-models, downstream impact, failed tests, and duration regressions posted on
-your PR, built on the existing diff/state APIs. Demand-gated and deferred
-items (team/server mode, warehouse cost integrations, Windows exec, UI
-rebuild) live in TODOS.md with their triggers.
+What ships next is decided by real usage, not by us guessing. Deferred and
+demand-gated items - team/server mode, warehouse cost integrations, Windows
+`exec`, GitLab CI, the UI rebuild - live in [TODOS.md](TODOS.md) with the
+trigger that unblocks each. If one of them is blocking you, open an issue.
 
 License: Apache-2.0. Not affiliated with dbt Labs; "dbt" is a trademark of
 dbt Labs, Inc.

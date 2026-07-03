@@ -1,0 +1,12 @@
+dbt-logbook
+Copyright 2026 Debabrata Saha
+
+Licensed under the Apache License, Version 2.0.
+
+This distribution bundles demo and test data derived from artifacts produced
+by building the "jaffle_shop" example project by dbt Labs, Inc.
+(https://github.com/dbt-labs/jaffle_shop_duckdb), licensed under the Apache
+License, Version 2.0.
+
+"dbt" is a trademark of dbt Labs, Inc. This project is not affiliated with
+or endorsed by dbt Labs, Inc.
