@@ -19,14 +19,49 @@ from . import queries
 WEB_DIR = Path(__file__).parent / "web"
 
 
-def create_app(db_path: Path) -> FastAPI:
+def create_app(db_path: Path, token: str | None = None) -> FastAPI:
+    """token: when set, every /api/* request must carry
+    `Authorization: Bearer <token>` - the mode for non-localhost serving
+    (remote CI runners fetching state). Without a token the API is open,
+    which is fine because the default bind is localhost-only."""
     app = FastAPI(title="dbt-logbook", docs_url=None, redoc_url=None)
+
+    if token:
+        import hmac
+
+        from fastapi import Request
+        from fastapi.responses import JSONResponse
+
+        @app.middleware("http")
+        async def require_token(request: Request, call_next):
+            if request.url.path.startswith("/api/"):
+                auth = request.headers.get("authorization", "")
+                supplied = auth.removeprefix("Bearer ").strip()
+                if not hmac.compare_digest(supplied, token):
+                    return JSONResponse({"detail": "unauthorized"}, status_code=401)
+            return await call_next(request)
 
     def db() -> sqlite3.Connection:
         conn = sqlite3.connect(db_path, timeout=30)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout=30000")
         return conn
+
+    @app.get("/api/state/{env}/manifest.json")
+    def state_manifest(env: str):
+        """Last-good manifest for `env` - the state-based CI state endpoint.
+        Use with: dbt build --select state:modified --defer --state <dir>."""
+        import tempfile
+
+        conn = db()
+        try:
+            dest = Path(tempfile.mkdtemp(prefix="dbt-logbook-state-"))
+            path = queries.export_last_good_manifest(conn, env, dest)
+            if path is None:
+                raise HTTPException(404, f"no successful run with a manifest for env '{env}'")
+            return FileResponse(path, media_type="application/json")
+        finally:
+            conn.close()
 
     @app.get("/api/summary")
     def summary():

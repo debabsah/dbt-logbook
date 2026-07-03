@@ -42,6 +42,13 @@ Served by `dbt-logbook ui` (localhost only).
 | `GET /api/diff?a&b` | `diff_runs` |
 | `GET /api/dag?node&hops&tests` | lineage graph / neighborhood |
 | `GET /api/summary` | store totals + last run |
+| `GET /api/state/{env}/manifest.json` | last-good manifest for state-based CI (`--defer --state`) |
+
+## Auth
+
+Localhost binds are open. Binding beyond localhost requires a token
+(`--token` / `DBT_LOGBOOK_TOKEN`); every `/api/*` request must then send
+`Authorization: Bearer <token>`. The static UI shell stays reachable.
 
 ## Semantics (shared definitions)
 

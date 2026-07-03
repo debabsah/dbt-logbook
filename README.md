@@ -84,6 +84,23 @@ scheduler (a `target/` watcher), and the UI - all one process, localhost only.
 Keep it alive the boring way: `docker run --restart unless-stopped ...` or a
 systemd unit with `Restart=on-failure`.
 
+## state-based CI without artifact plumbing
+
+The store already holds every environment's last-good manifest - serve it to CI
+instead of copying `manifest.json` to S3:
+
+```yaml
+# in CI, against a reachable dbt-logbook serve --host ... --token ...
+- run: |
+    curl -sf -H "Authorization: Bearer $DBT_LOGBOOK_TOKEN" \
+      "$LOGBOOK_URL/api/state/prod/manifest.json" -o ci-state/manifest.json
+    dbt build --select state:modified --defer --state ci-state
+```
+
+Locally the same thing is one command: `dbt-logbook state --env prod --out ci-state`.
+Binding beyond localhost requires a token; `/api/*` then demands
+`Authorization: Bearer <token>`.
+
 ## How it works
 
 dbt-logbook reads only dbt's stable surfaces - the CLI and the artifact files
@@ -105,8 +122,8 @@ the ones you'll want history for.
 
 ## Roadmap
 
-- v0.3: scheduler + Slack/Teams alerts (`dbt-logbook serve`)
-- v0.4: state-based CI state serving (last-good manifest per environment)
+- v0.5: freshness-over-time, flaky and regression screens, dbt docs serving
+- later: Windows exec support (see TODOS.md)
 
 License: Apache-2.0. Not affiliated with dbt Labs; "dbt" is a trademark of
 dbt Labs, Inc.

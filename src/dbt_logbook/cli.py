@@ -22,6 +22,21 @@ def _project_dir_or_exit() -> Path:
     return project_dir
 
 
+def _resolve_token(host: str, token: str | None) -> str | None:
+    """Non-localhost binds require a token - remote CI runners are the only
+    reason to leave localhost, and they authenticate."""
+    import os
+
+    token = token or os.environ.get("DBT_LOGBOOK_TOKEN")
+    if host not in ("127.0.0.1", "localhost", "::1") and not token:
+        typer.echo(
+            "dbt-logbook: binding beyond localhost requires --token "
+            "(or DBT_LOGBOOK_TOKEN).", err=True,
+        )
+        raise typer.Exit(2)
+    return token
+
+
 @app.command()
 def version() -> None:
     """Print the dbt-logbook version."""
@@ -131,9 +146,10 @@ def mcp() -> None:
 @app.command()
 def serve(
     port: int = typer.Option(8080, help="Port for UI + API."),
-    host: str = typer.Option("127.0.0.1", help="Bind address."),
+    host: str = typer.Option("127.0.0.1", help="Bind address (beyond localhost requires --token)."),
     env: str = typer.Option(None, help="Environment label for watcher-imported runs."),
     target_path: str = typer.Option(None, help="Override artifact dir to watch."),
+    token: str = typer.Option(None, help="Bearer token required on /api/* (or DBT_LOGBOOK_TOKEN)."),
 ) -> None:
     """Long-lived platform: scheduler + watcher + alerts + UI. Reads dbt-logbook.yml."""
     import threading
@@ -146,6 +162,7 @@ def serve(
     from .store import open_store
 
     project_dir = _project_dir_or_exit()
+    token = _resolve_token(host, token)
     try:
         schedules, notify = load_config(project_dir)
     except ValueError as e:
@@ -174,9 +191,32 @@ def serve(
     typer.echo(f"dbt-logbook: serving http://{host}:{port} · schedules: {names} "
                f"· watching {target_dir}", err=True)
     try:
-        uvicorn.run(create_app(db), host=host, port=port, log_level="warning")
+        uvicorn.run(create_app(db, token=token), host=host, port=port, log_level="warning")
     finally:
         stop.set()
+
+
+@app.command()
+def state(
+    env: str = typer.Option("default", help="Environment whose last-good manifest to export."),
+    out: str = typer.Option("dbt-logbook-state", help="Directory to write manifest.json into."),
+) -> None:
+    """Export the last-good manifest for state-based CI:
+    dbt build --select state:modified --defer --state <out>"""
+    from .paths import store_path
+    from .store import open_store
+    from . import queries
+
+    project_dir = _project_dir_or_exit()
+    conn = open_store(store_path(project_dir))
+    try:
+        path = queries.export_last_good_manifest(conn, env, Path(out))
+    finally:
+        conn.close()
+    if path is None:
+        typer.echo(f"dbt-logbook: no successful run with a manifest for env '{env}'", err=True)
+        raise typer.Exit(1)
+    typer.echo(str(path))
 
 
 @app.command(name="import")
