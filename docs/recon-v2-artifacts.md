@@ -35,5 +35,8 @@ auto-downloaded). Captured and diffed `target/` artifacts. Fixtures preserved in
 
 ## Matrix note
 
-dbt 1.11 exists (current stable) - fixture matrix is now 1.7 / 1.8 / 1.10 / 1.11 / 2.0.
-1.7/1.8/1.10 fixtures still to be generated (older schema versions differ more).
+dbt 1.11 exists (current stable) - fixture matrix is 1.7 / 1.8 / 1.10 / 1.11 / 2.0.
+All five fixture sets now live in tests/fixtures/ and the ingest suite runs
+against each (1.7 exercises the older manifest v11 / run_results v5 schemas;
+generated from a period-appropriate jaffle-shop checkout since current
+jaffle-shop uses test syntax that dbt 1.7/1.8 predate).

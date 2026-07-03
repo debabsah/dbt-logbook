@@ -5,8 +5,8 @@
 - **Why:** the SQL Server pitch targets a Windows-heavy audience, and `exec` is their history-capture path.
 - **Pros:** unlocks the audience the SQL Server claim courts.
 - **Cons:** platform-specific process code; CI minutes; zero users until launch proves demand.
-- **Context:** v0.1 documents `exec` as unsupported on Windows (POSIX signal semantics). `ui`/`import` are pure Python and likely fine untested. Decision made in /plan-eng-review 2026-07-03 (outside-voice finding #10: "unsupported, not untested").
-- **Blocked by:** v0.1 launch + demand signal (Windows users filing issues).
+- **Context:** `exec` is documented as unsupported on Windows since v0.1 (POSIX signal semantics). `ui`/`import` are pure Python and likely fine untested. Decision from the 2026-07-03 plan review: "unsupported, not untested".
+- **Blocked by:** public launch + demand signal (Windows users filing issues).
 
 ## ~~SQLite vs DuckDB engine evaluation~~ RESOLVED 2026-07-03
 Benchmarked at 1000 runs x 30 nodes (30k node_results, ~10x a busy year of
@@ -24,8 +24,7 @@ DuckDB would add a dependency to save milliseconds invisible over MCP stdio.
 - **Why:** the most commercially legible feature in the operations-layer positioning; removes the most annoying dbt Core CI pain (storing, retrieving, comparing the right state artifacts).
 - **Pros:** builds ENTIRELY on shipped surfaces (diff_runs, find_regressions, what_broke, /api/state); no new premises, no new deps.
 - **Cons:** CI platform surface area (Actions semantics, PR permissions, comment dedup).
-- **Context:** accepted from an outside product review (2026-07-03) as the strongest aligned addition.
-- **Blocked by:** launch feedback confirming CI is the top ask.
+- **Context:** accepted from an outside product review (2026-07-03) as the strongest aligned addition; pulled forward of launch because a PR comment is also distribution.
 
 ## Cost-aware operations (three tiers; owner-approved direction 2026-07-03)
 The instinct "cost-aware compiler" resolved to cost-aware OPERATIONS: cost is
@@ -39,18 +38,18 @@ warehouse optimizer already does it better.
   cost-rate per env = estimated compute cost for ANY warehouse/lakehouse
   (labeled "estimated"); exact bytes_billed/bytes_processed where
   adapter_response provides it (BigQuery - already stored). Health screen
-  spend view + find_cost_regressions MCP tool.
-- **Tier 2 - SHIPPED v0.6 (ci-report; BigQuery dry-run deferred to Tier 2.5, demand-gated):** impacted
-  models' historical cost at current schedule + BigQuery dry-run scan delta
-  for changed models (free, nothing executes). Cost awareness at merge time,
-  where the decision happens.
+  spend view + get_cost_summary MCP tool.
+- **Tier 2 - SHIPPED v0.6:** ci-report flags models running slower than
+  their own history with per-run cost deltas, right on the PR - cost
+  awareness at merge time, where the decision happens. (BigQuery dry-run
+  scan-delta prediction deferred to Tier 2.5, demand-gated.)
 - **Tier 3 - DEMAND-GATED (credentials):** query-history joins (Snowflake
   QUERY_HISTORY, BQ jobs, Databricks) for exact attribution; cost-aware
   scheduling ADVICE ("hourly schedule on a daily-changing source burns
   $N/mo"). Advice only - automatic data-aware skipping stays declared
   unreachable from artifacts; no dishonest claims.
-- **Positioning clause when Tier 1 ships:** "watches your runs and your
-  spend.
+- **Positioning clause (live since v0.6):** "watches your runs and your
+  spend."
 
 ## Team/server mode (DEMAND-GATED)
 - **What:** shared multi-user deployment: users/roles, audit trail, backup tooling, possibly multi-project.
