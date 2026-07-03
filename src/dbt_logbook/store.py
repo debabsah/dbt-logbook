@@ -15,7 +15,7 @@ Concurrency: WAL + busy_timeout. Correctness comes from idempotent ingest
 (INSERT OR IGNORE keyed on invocation_id / content hash), not from assuming
 a single writer process.
 
-Migrations: forward-only, with a pre-migration file copy — accrued history is
+Migrations: forward-only, with a pre-migration file copy - accrued history is
 irreplaceable because dbt overwrites its artifacts.
 """
 

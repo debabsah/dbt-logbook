@@ -5,8 +5,8 @@ const tooltip = document.getElementById("tooltip");
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fmtSecs = (s) => (s == null ? "–" : s < 10 ? s.toFixed(2) + "s" : s.toFixed(1) + "s");
-const fmtTime = (t) => (t ? t.replace("T", " ").slice(0, 19) : "–");
+const fmtSecs = (s) => (s == null ? "-" : s < 10 ? s.toFixed(2) + "s" : s.toFixed(1) + "s");
+const fmtTime = (t) => (t ? t.replace("T", " ").slice(0, 19) : "-");
 const isFail = (s) => ["error", "fail", "runtime error"].includes(String(s).toLowerCase());
 const statusHtml = (status) => {
   const bad = isFail(status) || status === "error";

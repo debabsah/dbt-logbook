@@ -18,10 +18,12 @@ target/
 dbt_packages/
 logs/
 
-# OS / editors
+# OS / editors / local tooling
 .DS_Store
 .idea/
 .vscode/
+.claude/
+.serena/
 
 # Local recon scratch (Task 1)
 recon/
