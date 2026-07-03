@@ -143,7 +143,9 @@ def ingest_target_dir(
     generated_at = meta.get("generated_at")
     if not invocation_id:
         return IngestResult("corrupt", detail="run_results.json missing metadata.invocation_id")
-    if not_before and generated_at and generated_at < not_before:
+    # Compare on the first 19 chars ("YYYY-MM-DDTHH:MM:SS") - both sides are
+    # UTC ISO but dbt uses a trailing Z while we use +00:00.
+    if not_before and generated_at and str(generated_at)[:19] < str(not_before)[:19]:
         return IngestResult(
             "stale", invocation_id, "artifacts predate wrapper start; not attributed"
         )
