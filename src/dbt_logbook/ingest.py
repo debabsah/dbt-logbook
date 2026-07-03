@@ -78,6 +78,33 @@ def _store_manifest(conn: sqlite3.Connection, manifest: dict) -> str:
     return h
 
 
+def _ingest_sources(conn: sqlite3.Connection, sources: dict) -> None:
+    """Record `dbt source freshness` results (sources.json). Tolerant and
+    idempotent like everything else."""
+    meta = sources.get("metadata") or {}
+    invocation_id = meta.get("invocation_id")
+    if not invocation_id:
+        return
+    rows = []
+    for r in sources.get("results") or []:
+        if isinstance(r, dict) and r.get("unique_id"):
+            rows.append(
+                (
+                    invocation_id,
+                    r.get("unique_id"),
+                    r.get("status"),
+                    r.get("max_loaded_at"),
+                    r.get("snapshotted_at") or meta.get("generated_at"),
+                )
+            )
+    conn.executemany(
+        "INSERT OR IGNORE INTO source_freshness "
+        "(invocation_id, unique_id, status, max_loaded_at, snapshotted_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        rows,
+    )
+
+
 def _refresh_nodes_current(conn: sqlite3.Connection, manifest: dict) -> None:
     nodes = manifest.get("nodes")
     if not isinstance(nodes, dict):
@@ -123,8 +150,14 @@ def ingest_target_dir(
     """
     run_results = _read_json(target_dir / "run_results.json")
     manifest = _read_json(target_dir / "manifest.json")
+    sources = _read_json(target_dir / "sources.json")
+    if sources:
+        _ingest_sources(conn, sources)
 
     if run_results is None and manifest is None:
+        if sources:
+            conn.commit()
+            return IngestResult("sources_only", detail="source freshness recorded")
         exists = (target_dir / "run_results.json").exists() or (
             target_dir / "manifest.json"
         ).exists()

@@ -42,10 +42,11 @@ def test_forward_migration_backs_up_and_preserves_data(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
 
+    next_version = store_mod.SCHEMA_VERSION + 1
     monkeypatch.setattr(
         store_mod,
         "MIGRATIONS",
-        MIGRATIONS + [(2, "ALTER TABLE runs ADD COLUMN migrated_col TEXT;")],
+        MIGRATIONS + [(next_version, "ALTER TABLE runs ADD COLUMN migrated_col TEXT;")],
     )
     conn = open_store(db)
     assert db.with_suffix(".db.bak").exists(), "pre-migration backup missing"
@@ -54,7 +55,7 @@ def test_forward_migration_backs_up_and_preserves_data(tmp_path, monkeypatch):
     version = conn.execute(
         "SELECT value FROM schema_meta WHERE key='schema_version'"
     ).fetchone()["value"]
-    assert int(version) == 2
+    assert int(version) == next_version
     conn.close()
 
 

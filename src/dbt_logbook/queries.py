@@ -163,6 +163,32 @@ def flaky_nodes(conn: sqlite3.Connection, window: int = 20, min_flips: int = 2) 
     return sorted(out, key=lambda x: -x["flips"])
 
 
+def freshness_history(conn: sqlite3.Connection, snapshots: int = 30) -> list[dict]:
+    """Per source: the last N freshness snapshots, oldest first."""
+    sources = [
+        r["unique_id"]
+        for r in conn.execute(
+            "SELECT DISTINCT unique_id FROM source_freshness ORDER BY unique_id"
+        ).fetchall()
+    ]
+    out = []
+    for uid in sources:
+        rows = conn.execute(
+            "SELECT status, max_loaded_at, snapshotted_at FROM source_freshness "
+            "WHERE unique_id = ? ORDER BY snapshotted_at DESC LIMIT ?",
+            (uid, snapshots),
+        ).fetchall()
+        series = [dict(r) for r in reversed(rows)]
+        out.append(
+            {
+                "unique_id": uid,
+                "latest_status": series[-1]["status"] if series else None,
+                "snapshots": series,
+            }
+        )
+    return out
+
+
 def load_manifest(conn: sqlite3.Connection, manifest_hash: str) -> dict | None:
     row = conn.execute(
         "SELECT gz FROM manifest_blobs WHERE hash = ?", (manifest_hash,)

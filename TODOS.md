@@ -13,3 +13,8 @@ Benchmarked at 1000 runs x 30 nodes (30k node_results, ~10x a busy year of
 hourly cron): worst MCP-shaped query (regression scan) 17ms; model history
 0.6ms; what-broke 0.2ms. SQLite locked as the engine for the v0.2 contract -
 DuckDB would add a dependency to save milliseconds invisible over MCP stdio.
+
+## UI framework rebuild (deferred at v0.5)
+- **What:** vanilla JS -> a component framework (the design doc scheduled this "as screen count grows").
+- **Why deferred:** at 6 views the hash-router + render-function structure is ~600 lines, has no state-sync bugs, and keeps the no-build-step property that makes contributions easy. The ceiling hasn't hurt yet.
+- **Revisit when:** a screen needs client-side state shared across views (live updates, filters that persist), or app.js crosses ~1000 lines.

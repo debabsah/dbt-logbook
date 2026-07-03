@@ -19,12 +19,17 @@ from . import queries
 WEB_DIR = Path(__file__).parent / "web"
 
 
-def create_app(db_path: Path, token: str | None = None) -> FastAPI:
+def create_app(db_path: Path, token: str | None = None,
+               docs_dir: Path | None = None) -> FastAPI:
     """token: when set, every /api/* request must carry
     `Authorization: Bearer <token>` - the mode for non-localhost serving
     (remote CI runners fetching state). Without a token the API is open,
-    which is fine because the default bind is localhost-only."""
+    which is fine because the default bind is localhost-only.
+
+    docs_dir: a dir containing `dbt docs generate` output (usually target/);
+    mounted at /docs-site when index.html exists there."""
     app = FastAPI(title="dbt-logbook", docs_url=None, redoc_url=None)
+    docs_available = bool(docs_dir and (docs_dir / "index.html").exists())
 
     if token:
         import hmac
@@ -79,6 +84,7 @@ def create_app(db_path: Path, token: str | None = None) -> FastAPI:
                 "runs": runs,
                 "models": models,
                 "last_run": dict(last) if last else None,
+                "docs_available": docs_available,
             }
         finally:
             conn.close()
@@ -112,6 +118,14 @@ def create_app(db_path: Path, token: str | None = None) -> FastAPI:
         conn = db()
         try:
             return queries.flaky_nodes(conn, window=window, min_flips=min_flips)
+        finally:
+            conn.close()
+
+    @app.get("/api/freshness")
+    def freshness(snapshots: int = Query(30, le=200)):
+        conn = db()
+        try:
+            return queries.freshness_history(conn, snapshots=snapshots)
         finally:
             conn.close()
 
@@ -260,4 +274,6 @@ def create_app(db_path: Path, token: str | None = None) -> FastAPI:
         return FileResponse(WEB_DIR / "index.html")
 
     app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+    if docs_available:
+        app.mount("/docs-site", StaticFiles(directory=docs_dir, html=True), name="docs")
     return app

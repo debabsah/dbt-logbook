@@ -156,6 +156,54 @@ async function renderModel(uid) {
   }
 }
 
+/* ---------- health (regressions, flaky, freshness) ---------- */
+
+async function renderHealth() {
+  const [regs, flaky, fresh] = await Promise.all([
+    api("/regressions"), api("/flaky"), api("/freshness"),
+  ]);
+  const regRows = regs
+    .map((r) => `<tr class="clickable" onclick="location.hash='#/model/${esc(r.unique_id)}'">
+      <td>${esc(r.unique_id.split(".").pop())}</td>
+      <td class="num">${fmtSecs(r.baseline_median_seconds)}</td>
+      <td class="num">${fmtSecs(r.latest_seconds)}</td>
+      <td class="num" style="color:var(--status-critical)">${r.factor}×</td></tr>`)
+    .join("");
+  const flakyRows = flaky
+    .map((f) => `<tr class="clickable" onclick="location.hash='#/model/${esc(f.unique_id)}'">
+      <td>${esc(f.unique_id.split(".").pop())}</td>
+      <td class="num">${f.flips}</td><td class="num">${f.runs_considered}</td>
+      <td>${f.currently_failing ? statusHtml("error") : statusHtml("success")}</td></tr>`)
+    .join("");
+  const freshRows = fresh
+    .map((s) => {
+      const strip = s.snapshots
+        .map((p) => {
+          const bad = ["error", "runtime error"].includes(String(p.status).toLowerCase());
+          const warn = String(p.status).toLowerCase() === "warn";
+          const cls = bad ? "error" : warn ? "warn" : "good";
+          return `<a class="${cls}" title="${esc(fmtTime(p.snapshotted_at))} ${esc(p.status)}
+loaded ${esc(fmtTime(p.max_loaded_at))}">${bad ? "✗" : warn ? "!" : "✓"}</a>`;
+        })
+        .join("");
+      return `<tr><td>${esc(s.unique_id.split(".").slice(-2).join("."))}</td>
+        <td><div class="strip">${strip}</div></td></tr>`;
+    })
+    .join("");
+  view.innerHTML = `
+    <div class="card"><h2>Duration regressions (latest vs median of prior runs)</h2>
+      ${regs.length ? `<table><thead><tr><th>Model</th><th style="text-align:right">Baseline</th>
+        <th style="text-align:right">Latest</th><th style="text-align:right">Factor</th></tr></thead>
+        <tbody>${regRows}</tbody></table>` : '<div class="empty">No regressions detected.</div>'}</div>
+    <div class="card"><h2>Flaky nodes (status flips in recent runs)</h2>
+      ${flaky.length ? `<table><thead><tr><th>Node</th><th style="text-align:right">Flips</th>
+        <th style="text-align:right">Runs</th><th>Now</th></tr></thead>
+        <tbody>${flakyRows}</tbody></table>` : '<div class="empty">Nothing flaky. Enjoy it.</div>'}</div>
+    <div class="card"><h2>Source freshness over time</h2>
+      ${fresh.length ? `<table><tbody>${freshRows}</tbody></table>`
+        : '<div class="empty">No freshness snapshots yet - run <code>dbt source freshness</code> under <code>dbt-logbook exec</code> (or let the watcher pick it up).</div>'}</div>`;
+}
+
 /* ---------- diff ---------- */
 
 async function renderDiff() {
@@ -272,6 +320,7 @@ async function route() {
   try {
     if (hash.startsWith("#/run/")) await renderRun(decodeURIComponent(hash.slice(6)));
     else if (hash.startsWith("#/model/")) await renderModel(decodeURIComponent(hash.slice(8)));
+    else if (hash.startsWith("#/health")) await renderHealth();
     else if (hash.startsWith("#/diff")) await renderDiff();
     else if (hash.startsWith("#/dag")) await renderDag();
     else await renderRuns();
@@ -282,6 +331,7 @@ async function route() {
     document.getElementById("summary").textContent =
       `${s.runs} runs · ${s.models} models` +
       (s.last_run ? ` · last: ${s.last_run.status} ${fmtTime(s.last_run.generated_at)}` : "");
+    if (s.docs_available) document.getElementById("docslink").style.display = "";
   }).catch(() => {});
 }
 

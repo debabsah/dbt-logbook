@@ -25,7 +25,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA_V1 = """
 CREATE TABLE schema_meta (
@@ -71,8 +71,22 @@ CREATE TABLE nodes_current (
 );
 """
 
+# v2: source freshness snapshots (from sources.json, `dbt source freshness`).
+_SCHEMA_V2 = """
+CREATE TABLE source_freshness (
+    invocation_id TEXT NOT NULL,
+    unique_id TEXT NOT NULL,
+    status TEXT,
+    max_loaded_at TEXT,
+    snapshotted_at TEXT,
+    PRIMARY KEY (invocation_id, unique_id)
+);
+CREATE INDEX idx_source_freshness_by_source ON source_freshness (unique_id, snapshotted_at);
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [
     (1, _SCHEMA_V1),
+    (2, _SCHEMA_V2),
 ]
 
 

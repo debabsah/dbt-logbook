@@ -43,6 +43,8 @@ Served by `dbt-logbook ui` (localhost only).
 | `GET /api/dag?node&hops&tests` | lineage graph / neighborhood |
 | `GET /api/summary` | store totals + last run |
 | `GET /api/state/{env}/manifest.json` | last-good manifest for state-based CI (`--defer --state`) |
+| `GET /api/freshness?snapshots` | per-source freshness status series over time |
+| `GET /docs-site/` | generated `dbt docs` output, when present in the target dir |
 
 ## Auth
 

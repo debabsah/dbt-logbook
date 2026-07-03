@@ -120,10 +120,19 @@ the ones you'll want history for.
   (pure Python); `exec` is unsupported for now (POSIX signal semantics).
 - The UI binds to localhost only.
 
+## Health screen
+
+`#/health` in the UI: duration regressions (latest vs median baseline), flaky
+nodes (status flips across recent runs), and source freshness over time (from
+`dbt source freshness` snapshots the watcher or wrapper picks up). Generated
+`dbt docs` output is served at `/docs-site/` when present.
+
+![Health: regressions, flaky nodes, freshness over time](docs/img/health.png)
+
 ## Roadmap
 
-- v0.5: freshness-over-time, flaky and regression screens, dbt docs serving
-- later: Windows exec support (see TODOS.md)
+- Windows exec support, UI framework rebuild: see TODOS.md - both deferred
+  until demand shows up in issues.
 
 License: Apache-2.0. Not affiliated with dbt Labs; "dbt" is a trademark of
 dbt Labs, Inc.

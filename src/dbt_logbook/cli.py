@@ -100,7 +100,10 @@ def ui(
         import webbrowser
 
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
-    uvicorn.run(create_app(db), host=host, port=port, log_level="warning")
+    uvicorn.run(
+        create_app(db, docs_dir=resolve_target_dir(project_dir, target_path)),
+        host=host, port=port, log_level="warning",
+    )
 
 
 @app.command()
@@ -191,7 +194,10 @@ def serve(
     typer.echo(f"dbt-logbook: serving http://{host}:{port} · schedules: {names} "
                f"· watching {target_dir}", err=True)
     try:
-        uvicorn.run(create_app(db, token=token), host=host, port=port, log_level="warning")
+        uvicorn.run(
+            create_app(db, token=token, docs_dir=target_dir),
+            host=host, port=port, log_level="warning",
+        )
     finally:
         stop.set()
 

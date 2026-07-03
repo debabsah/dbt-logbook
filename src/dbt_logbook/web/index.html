@@ -78,6 +78,7 @@
   }
   .strip a.good { background: var(--status-good); }
   .strip a.error { background: var(--status-critical); }
+  .strip a.warn { background: #fab219; color: #1a1a19; }
   svg text { fill: var(--ink-muted); font-size: 11px; }
   .tooltip {
     position: fixed; pointer-events: none; z-index: 10;
@@ -106,8 +107,10 @@
   <h1>dbt-logbook</h1>
   <nav>
     <a href="#/runs" data-nav="runs">Runs</a>
+    <a href="#/health" data-nav="health">Health</a>
     <a href="#/diff" data-nav="diff">Diff</a>
     <a href="#/dag" data-nav="dag">DAG</a>
+    <a href="/docs-site/" id="docslink" style="display:none" target="_blank">dbt docs</a>
   </nav>
   <span class="meta" id="summary"></span>
 </header>
