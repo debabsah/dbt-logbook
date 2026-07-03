@@ -87,7 +87,7 @@ scheduler (a `target/` watcher), and the UI - all one process, localhost only.
 Keep it alive the boring way: `docker run --restart unless-stopped ...` or a
 systemd unit with `Restart=on-failure`.
 
-## state-based CI without artifact plumbing
+## State-based CI without artifact plumbing
 
 The store already holds every environment's last-good manifest - serve it to CI
 instead of copying `manifest.json` to S3:

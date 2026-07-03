@@ -67,6 +67,3 @@ warehouse optimizer already does it better.
 - **Trigger:** alert volume feedback from real serve deployments (people drowning in webhook noise).
 - **Why gated:** building incident management before anyone receives alerts is PagerDuty-lite cosplay. The primitives (flaky tracking, failure-to-change attribution via diff) already exist.
 
-## Considered and rejected
-- **Semantic-layer reader** (parse/validate metrics YAML): YAGNI; duplicates dbt's own parsing; premise-6 territory.
-
