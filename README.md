@@ -13,12 +13,23 @@ and zero changes to your dbt project.
 
 ## What you get
 
-- **Run timeline**: every recorded invocation, status at a glance, failures inline
-- **Per-model history**: duration sparkline across runs - see the regression the
-  moment it starts, and the failed runs marked on the line
-- **What changed between two runs**: checksum-based diff (added / removed /
-  modified models), powered by dbt's own per-node checksums
-- **Lineage**: clickable DAG from your manifest, tests hidden by default
+**In your terminal and browser** - `ui` / `serve`:
+- run timeline with failures inline; per-model duration sparklines that show a
+  regression the day it starts; checksum-based what-changed diffs between any
+  two runs; clickable lineage; source freshness over time
+- a cron scheduler with retries and Slack/Teams alerts on failure and recovery
+- top-spenders view: compute cost per model with zero warehouse credentials
+  (exact bytes on BigQuery, duration x your rate everywhere else)
+
+**On your pull requests** - `ci-report`:
+- changed models vs the last-good state, downstream blast radius, failed
+  tests, and anything running slower than its own history (with cost deltas) -
+  posted as a PR comment, served from the same store your team already runs
+
+**In your agent** - `mcp`:
+- "what broke last night?", "which models got slower this week?", "which
+  tests are flaky?", "what would state:modified rebuild?" - history-backed
+  answers that current-state tools structurally cannot give
 
 ## Quickstart
 
