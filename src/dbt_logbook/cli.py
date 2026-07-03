@@ -52,6 +52,42 @@ def exec_cmd(
     raise typer.Exit(code)
 
 
+@app.command()
+def ui(
+    port: int = typer.Option(8080, help="Port for the local UI."),
+    host: str = typer.Option("127.0.0.1", help="Bind address (localhost only by default)."),
+    target_path: str = typer.Option(None, help="Override artifact dir for the initial import."),
+    env: str = typer.Option(None, help="Environment label for the initial import."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the browser."),
+) -> None:
+    """Instant read-only UI: imports current artifacts, then serves the history."""
+    import uvicorn
+
+    from .api import create_app
+    from .ingest import ingest_target_dir
+    from .paths import resolve_target_dir, store_path
+    from .store import open_store
+
+    project_dir = _project_dir_or_exit()
+    db = store_path(project_dir)
+    conn = open_store(db)
+    try:
+        result = ingest_target_dir(conn, resolve_target_dir(project_dir, target_path), env=env)
+    finally:
+        conn.close()
+    typer.echo(f"dbt-logbook: import {result.status}"
+               + (f" ({result.detail})" if result.detail else ""), err=True)
+
+    url = f"http://{host}:{port}"
+    typer.echo(f"dbt-logbook: serving {url}", err=True)
+    if open_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    uvicorn.run(create_app(db), host=host, port=port, log_level="warning")
+
+
 @app.command(name="import")
 def import_cmd(
     path: str = typer.Argument(None, help="Artifact dir to ingest (default: the project's target path)."),
