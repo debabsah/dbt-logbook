@@ -88,6 +88,37 @@ def ui(
     uvicorn.run(create_app(db), host=host, port=port, log_level="warning")
 
 
+@app.command()
+def demo(
+    port: int = typer.Option(8080, help="Port for the demo UI."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the browser."),
+) -> None:
+    """A populated playground: 5 seeded runs with a failure and a regression."""
+    import tempfile
+
+    import uvicorn
+
+    from .api import create_app
+    from .demo import seed_demo_store
+    from .store import open_store
+
+    scratch = Path(tempfile.mkdtemp(prefix="dbt-logbook-demo-"))
+    db = scratch / "history.db"
+    conn = open_store(db)
+    try:
+        seed_demo_store(conn, scratch)
+    finally:
+        conn.close()
+    url = f"http://127.0.0.1:{port}"
+    typer.echo(f"dbt-logbook demo: 5 runs seeded (1 failure, 1 slowdown) - {url}", err=True)
+    if open_browser:
+        import threading
+        import webbrowser
+
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    uvicorn.run(create_app(db), host="127.0.0.1", port=port, log_level="warning")
+
+
 @app.command(name="import")
 def import_cmd(
     path: str = typer.Argument(None, help="Artifact dir to ingest (default: the project's target path)."),
