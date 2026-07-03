@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# dbt-logbook store (users keep their own history local)
+.dbtlogbook/
+
+# dbt artifacts in vendored/demo projects
+target/
+dbt_packages/
+logs/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local recon scratch (Task 1)
+recon/
