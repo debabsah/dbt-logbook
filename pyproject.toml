@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Run history for dbt. Every invocation recorded, nothing overwritten."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Debabrata Saha" }]
 keywords = ["dbt", "run history", "observability", "data engineering"]
 dependencies = [
