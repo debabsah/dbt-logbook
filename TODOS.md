@@ -27,13 +27,30 @@ DuckDB would add a dependency to save milliseconds invisible over MCP stdio.
 - **Context:** accepted from an outside product review (2026-07-03) as the strongest aligned addition.
 - **Blocked by:** launch feedback confirming CI is the top ask.
 
-## Credential-free cost/volume signals from adapter_response
-- **What:** extract bytes_processed/bytes_billed (BigQuery) and similar per-node stats already present in run_results adapter_response; show cost/volume trends on the Health screen + an MCP tool (find_models_with_cost_spike).
-- **Why:** cost visibility with ZERO warehouse credentials - the fraction of "cost intelligence" that fits the zero-config premise.
-- **Pros:** the data is already in the store (adapter_response is ingested today, rows_affected already extracted); pure extraction + view work.
-- **Cons:** coverage varies by adapter (rich on BigQuery, thin elsewhere); must not overpromise "cost" where only rows/timing exist.
-- **Context:** the keepable 20% of the outside review's cost-intelligence proposal. The other 80% (warehouse query-history integrations) is demand-gated below.
-- **Blocked by:** nothing - cheap add whenever.
+## Cost-aware operations (three tiers; owner-approved direction 2026-07-03)
+The instinct "cost-aware compiler" resolved to cost-aware OPERATIONS: cost is
+one more per-node time series, so every shipped mechanism (history, regression
+detection, diff, PR reporting, MCP) applies to dollars. Explicitly NOT a SQL
+rewriter/optimizer: that requires per-dialect SQL comprehension (Fusion's and
+SQLMesh's decade-long fight), inverts our observe-only trust model, and the
+warehouse optimizer already does it better.
+
+- **Tier 1 - credential-free, buildable now:** duration x configurable
+  cost-rate per env = estimated compute cost for ANY warehouse/lakehouse
+  (labeled "estimated"); exact bytes_billed/bytes_processed where
+  adapter_response provides it (BigQuery - already stored). Health screen
+  spend view + find_cost_regressions MCP tool.
+- **Tier 2 - the PR money line (folds into the v0.6 CI PR bot):** impacted
+  models' historical cost at current schedule + BigQuery dry-run scan delta
+  for changed models (free, nothing executes). Cost awareness at merge time,
+  where the decision happens.
+- **Tier 3 - DEMAND-GATED (credentials):** query-history joins (Snowflake
+  QUERY_HISTORY, BQ jobs, Databricks) for exact attribution; cost-aware
+  scheduling ADVICE ("hourly schedule on a daily-changing source burns
+  $N/mo"). Advice only - automatic data-aware skipping stays declared
+  unreachable from artifacts; no dishonest claims.
+- **Positioning clause when Tier 1 ships:** "watches your runs and your
+  spend.
 
 ## Team/server mode (DEMAND-GATED)
 - **What:** shared multi-user deployment: users/roles, audit trail, backup tooling, possibly multi-project.
