@@ -43,6 +43,21 @@ Or ingest artifacts from anywhere (for example, downloaded CI artifacts):
 dbt-logbook import path/to/artifacts --env prod
 ```
 
+## Ask your agent about your runs (MCP)
+
+The history store is exposed as an MCP server - the cross-run questions that
+current-state tools structurally can't answer, because dbt overwrites its
+artifacts:
+
+```
+claude mcp add dbt-logbook -- uvx dbt-logbook mcp     # from your dbt project dir
+```
+
+Then ask: *"what broke last night?"*, *"which models got slower this week?"*,
+*"which tests are flaky?"*, *"what changed between the last two runs?"*,
+*"what would state:modified rebuild?"*. Full tool list and REST equivalents:
+[docs/api-contract.md](docs/api-contract.md).
+
 ## How it works
 
 dbt-logbook reads only dbt's stable surfaces - the CLI and the artifact files
@@ -64,8 +79,6 @@ the ones you'll want history for.
 
 ## Roadmap
 
-- v0.2: local metadata API + MCP server over the store - ask your agent
-  "what broke last night and what changed?"
 - v0.3: scheduler + Slack/Teams alerts (`dbt-logbook serve`)
 - v0.4: state-based CI state serving (last-good manifest per environment)
 

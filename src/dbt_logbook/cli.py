@@ -119,6 +119,15 @@ def demo(
     uvicorn.run(create_app(db), host="127.0.0.1", port=port, log_level="warning")
 
 
+@app.command()
+def mcp() -> None:
+    """MCP server (stdio) over this project's run history - for Claude/Cursor."""
+    from .mcp_server import build_server
+    from .paths import store_path
+
+    build_server(store_path(_project_dir_or_exit())).run()
+
+
 @app.command(name="import")
 def import_cmd(
     path: str = typer.Argument(None, help="Artifact dir to ingest (default: the project's target path)."),

@@ -8,10 +8,8 @@
 - **Context:** v0.1 documents `exec` as unsupported on Windows (POSIX signal semantics). `ui`/`import` are pure Python and likely fine untested. Decision made in /plan-eng-review 2026-07-03 (outside-voice finding #10: "unsupported, not untested").
 - **Blocked by:** v0.1 launch + demand signal (Windows users filing issues).
 
-## SQLite → DuckDB engine evaluation (before v0.2 contract freeze)
-- **What:** benchmark MCP-shaped analytical queries (cross-run aggregations, sparkline scans) on a realistically sized store; decide SQLite vs DuckDB with data.
-- **Why:** the engine decision locks when the v0.2 REST/MCP API contract publishes; after that an engine swap breaks best-effort direct-file consumers.
-- **Pros:** last-responsible-moment decision, made with numbers.
-- **Cons:** an afternoon that might confirm the obvious.
-- **Context:** v0.1 ships stdlib SQLite (zero deps). DuckDB adds a dep but wins on analytical scans. Design doc Open Question #3; eng review pinned the sequencing.
-- **Blocked by:** v0.1 store existing with seeded/real data.
+## ~~SQLite vs DuckDB engine evaluation~~ RESOLVED 2026-07-03
+Benchmarked at 1000 runs x 30 nodes (30k node_results, ~10x a busy year of
+hourly cron): worst MCP-shaped query (regression scan) 17ms; model history
+0.6ms; what-broke 0.2ms. SQLite locked as the engine for the v0.2 contract -
+DuckDB would add a dependency to save milliseconds invisible over MCP stdio.

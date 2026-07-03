@@ -6,7 +6,6 @@ request (SQLite is cheap to open; WAL allows concurrent readers with writers).
 
 from __future__ import annotations
 
-import gzip
 import json
 import sqlite3
 from pathlib import Path
@@ -15,16 +14,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import queries
+
 WEB_DIR = Path(__file__).parent / "web"
-
-
-def _load_manifest(conn: sqlite3.Connection, manifest_hash: str) -> dict:
-    row = conn.execute(
-        "SELECT gz FROM manifest_blobs WHERE hash = ?", (manifest_hash,)
-    ).fetchone()
-    if row is None:
-        raise HTTPException(404, f"manifest {manifest_hash} not in store")
-    return json.loads(gzip.decompress(row["gz"]))
 
 
 def create_app(db_path: Path) -> FastAPI:
@@ -57,22 +49,34 @@ def create_app(db_path: Path) -> FastAPI:
             conn.close()
 
     @app.get("/api/runs")
-    def runs(limit: int = Query(50, le=500), offset: int = 0):
+    def runs(limit: int = Query(50, le=500), offset: int = 0, env: str | None = None):
         conn = db()
         try:
-            rows = conn.execute(
-                "SELECT r.invocation_id, r.generated_at, r.dbt_version, r.command, "
-                "       r.env, r.status, r.elapsed, r.manifest_hash, "
-                "       COUNT(nr.unique_id) AS nodes, "
-                "       SUM(CASE WHEN lower(nr.status) IN ('error','fail','runtime error') "
-                "           THEN 1 ELSE 0 END) AS failed "
-                "FROM runs r LEFT JOIN node_results nr USING (invocation_id) "
-                "GROUP BY r.invocation_id "
-                "ORDER BY r.generated_at DESC LIMIT ? OFFSET ?",
-                (limit, offset),
-            ).fetchall()
-            total = conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
-            return {"total": total, "runs": [dict(r) for r in rows]}
+            return queries.run_history(conn, limit=limit, offset=offset, env=env)
+        finally:
+            conn.close()
+
+    @app.get("/api/what-broke")
+    def what_broke(runs_back: int = Query(1, le=50)):
+        conn = db()
+        try:
+            return queries.what_broke(conn, runs_back=runs_back)
+        finally:
+            conn.close()
+
+    @app.get("/api/regressions")
+    def regressions(factor: float = 2.0, window: int = Query(10, le=100), min_seconds: float = 1.0):
+        conn = db()
+        try:
+            return queries.find_regressions(conn, factor=factor, window=window, min_seconds=min_seconds)
+        finally:
+            conn.close()
+
+    @app.get("/api/flaky")
+    def flaky(window: int = Query(20, le=200), min_flips: int = 2):
+        conn = db()
+        try:
+            return queries.flaky_nodes(conn, window=window, min_flips=min_flips)
         finally:
             conn.close()
 
@@ -131,8 +135,8 @@ def create_app(db_path: Path) -> FastAPI:
             ).fetchone()
             if row is None:
                 raise HTTPException(404, "no manifest in store")
-            manifest = _load_manifest(conn, row["manifest_hash"])
-            node = (manifest.get("nodes") or {}).get(unique_id)
+            manifest = queries.load_manifest(conn, row["manifest_hash"])
+            node = ((manifest or {}).get("nodes") or {}).get(unique_id)
             if node is None:
                 raise HTTPException(404, "node not in latest manifest")
             return {
@@ -148,41 +152,10 @@ def create_app(db_path: Path) -> FastAPI:
         """Checksum-based node diff between two runs' manifests (a=older, b=newer)."""
         conn = db()
         try:
-            def checksums(invocation_id: str) -> tuple[dict, str | None]:
-                run = conn.execute(
-                    "SELECT manifest_hash, dbt_version FROM runs WHERE invocation_id = ?",
-                    (invocation_id,),
-                ).fetchone()
-                if run is None:
-                    raise HTTPException(404, f"run {invocation_id} not found")
-                if run["manifest_hash"] is None:
-                    raise HTTPException(404, f"run {invocation_id} has no manifest")
-                manifest = _load_manifest(conn, run["manifest_hash"])
-                out = {}
-                for uid, node in (manifest.get("nodes") or {}).items():
-                    if isinstance(node, dict):
-                        cs = node.get("checksum") or {}
-                        out[uid] = cs.get("checksum") if isinstance(cs, dict) else None
-                return out, run["dbt_version"]
-
-            ca, va = checksums(a)
-            cb, vb = checksums(b)
-            added = sorted(set(cb) - set(ca))
-            removed = sorted(set(ca) - set(cb))
-            modified = sorted(
-                uid for uid in set(ca) & set(cb) if ca[uid] != cb[uid]
-            )
-            unchanged = len(set(ca) & set(cb)) - len(modified)
-            return {
-                "a": a,
-                "b": b,
-                "added": added,
-                "removed": removed,
-                "modified": modified,
-                "unchanged": unchanged,
-                # A v1->v2 engine change re-hashes everything; the UI shows a banner.
-                "engine_changed": (va or "").split(".")[0] != (vb or "").split(".")[0],
-            }
+            try:
+                return queries.diff_runs(conn, a, b)
+            except KeyError as e:
+                raise HTTPException(404, str(e).strip("'"))
         finally:
             conn.close()
 
