@@ -1,10 +1,13 @@
 # dbt-logbook
 
-Run history for dbt. Every invocation recorded, nothing overwritten.
+The self-hosted operations layer for production dbt Core. Keep dbt Core, add
+the missing operational layer, stay self-hosted.
 
-dbt writes `run_results.json` and overwrites it on the next run. dbt-logbook keeps
-every run in a local SQLite store and gives you the views that history makes
-possible - with zero configuration and zero changes to your dbt project.
+At its core: run history. dbt writes `run_results.json` and overwrites it on
+the next run; dbt-logbook keeps every run in a local SQLite store and gives you
+the views that history makes possible - run timelines, regressions, diffs,
+scheduling, CI state, an agent-facing metadata API - with zero configuration
+and zero changes to your dbt project.
 
 ![Per-model duration across runs, with a visible regression](docs/img/model.png)
 
@@ -131,8 +134,12 @@ nodes (status flips across recent runs), and source freshness over time (from
 
 ## Roadmap
 
-- Windows exec support, UI framework rebuild: see TODOS.md - both deferred
-  until demand shows up in issues.
+v0.5 is current. What ships next is decided by real usage, not by us guessing;
+the leading candidate for v0.6 is **CI pull-request comments** - changed
+models, downstream impact, failed tests, and duration regressions posted on
+your PR, built on the existing diff/state APIs. Demand-gated and deferred
+items (team/server mode, warehouse cost integrations, Windows exec, UI
+rebuild) live in TODOS.md with their triggers.
 
 License: Apache-2.0. Not affiliated with dbt Labs; "dbt" is a trademark of
 dbt Labs, Inc.
