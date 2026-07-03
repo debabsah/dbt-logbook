@@ -10,7 +10,10 @@ from dbt_logbook.store import open_store
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-@pytest.fixture(params=["dbt-1.11", "dbt-2.0"], ids=["v1.11", "v2.0"])
+@pytest.fixture(
+    params=["dbt-1.7", "dbt-1.8", "dbt-1.10", "dbt-1.11", "dbt-2.0"],
+    ids=["v1.7", "v1.8", "v1.10", "v1.11", "v2.0"],
+)
 def target_dir(request, tmp_path) -> Path:
     """A tmp target/ populated with golden artifacts for one dbt version."""
     src = FIXTURES / request.param
