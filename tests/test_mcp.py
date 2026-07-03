@@ -19,6 +19,7 @@ EXPECTED_TOOLS = {
     "find_flaky_nodes",
     "diff_runs",
     "what_changed",
+    "get_cost_summary",
     "state_modified_preview",
 }
 

@@ -19,7 +19,7 @@ DuckDB would add a dependency to save milliseconds invisible over MCP stdio.
 - **Why deferred:** at 6 views the hash-router + render-function structure is ~600 lines, has no state-sync bugs, and keeps the no-build-step property that makes contributions easy. The ceiling hasn't hurt yet.
 - **Revisit when:** a screen needs client-side state shared across views (live updates, filters that persist), or app.js crosses ~1000 lines.
 
-## CI pull-request comments (leading v0.6 candidate)
+## ~~CI pull-request comments~~ SHIPPED v0.6 (ci-report command + workflow snippet)
 - **What:** a GitHub Action (GitLab later) that comments on PRs: changed models (checksum diff vs last-good state), impacted downstream models, failed/new tests, duration regressions, and a safe/risky-to-merge summary with a link to run details.
 - **Why:** the most commercially legible feature in the operations-layer positioning; removes the most annoying dbt Core CI pain (storing, retrieving, comparing the right state artifacts).
 - **Pros:** builds ENTIRELY on shipped surfaces (diff_runs, find_regressions, what_broke, /api/state); no new premises, no new deps.
@@ -35,12 +35,12 @@ rewriter/optimizer: that requires per-dialect SQL comprehension (Fusion's and
 SQLMesh's decade-long fight), inverts our observe-only trust model, and the
 warehouse optimizer already does it better.
 
-- **Tier 1 - credential-free, buildable now:** duration x configurable
+- **Tier 1 - SHIPPED v0.6:** duration x configurable
   cost-rate per env = estimated compute cost for ANY warehouse/lakehouse
   (labeled "estimated"); exact bytes_billed/bytes_processed where
   adapter_response provides it (BigQuery - already stored). Health screen
   spend view + find_cost_regressions MCP tool.
-- **Tier 2 - the PR money line (folds into the v0.6 CI PR bot):** impacted
+- **Tier 2 - SHIPPED v0.6 (ci-report; BigQuery dry-run deferred to Tier 2.5, demand-gated):** impacted
   models' historical cost at current schedule + BigQuery dry-run scan delta
   for changed models (free, nothing executes). Cost awareness at merge time,
   where the decision happens.

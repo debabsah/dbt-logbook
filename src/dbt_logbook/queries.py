@@ -163,6 +163,52 @@ def flaky_nodes(conn: sqlite3.Connection, window: int = 20, min_flips: int = 2) 
     return sorted(out, key=lambda x: -x["flips"])
 
 
+def cost_summary(conn: sqlite3.Connection, rate_per_hour: float | None = None,
+                 window_runs: int = 50, top: int = 20) -> dict:
+    """Per-node compute spend over the last `window_runs` runs.
+
+    Exact where the adapter reports volume (bytes_billed on BigQuery);
+    estimated everywhere else as duration x rate_per_hour when a rate is
+    configured. Share of total runtime is always available - it needs nothing.
+    """
+    recent = [
+        r["invocation_id"]
+        for r in conn.execute(
+            "SELECT invocation_id FROM runs ORDER BY generated_at DESC LIMIT ?",
+            (window_runs,),
+        ).fetchall()
+    ]
+    if not recent:
+        return {"window_runs": 0, "rate_per_hour": rate_per_hour, "nodes": []}
+    q = ",".join("?" * len(recent))
+    rows = conn.execute(
+        f"""SELECT unique_id,
+                   COUNT(*) AS runs,
+                   SUM(COALESCE(execution_time, 0)) AS total_seconds,
+                   SUM(bytes_billed) AS bytes_billed,
+                   SUM(bytes_processed) AS bytes_processed
+            FROM node_results WHERE invocation_id IN ({q})
+            GROUP BY unique_id ORDER BY total_seconds DESC""",
+        recent,
+    ).fetchall()
+    grand_total = sum(r["total_seconds"] or 0 for r in rows) or 1.0
+    nodes = []
+    for r in rows[:top]:
+        secs = r["total_seconds"] or 0
+        nodes.append(
+            {
+                "unique_id": r["unique_id"],
+                "runs": r["runs"],
+                "total_seconds": round(secs, 2),
+                "share_pct": round(100 * secs / grand_total, 1),
+                "est_cost": round(secs / 3600 * rate_per_hour, 2) if rate_per_hour else None,
+                "bytes_billed": r["bytes_billed"],
+                "bytes_processed": r["bytes_processed"],
+            }
+        )
+    return {"window_runs": len(recent), "rate_per_hour": rate_per_hour, "nodes": nodes}
+
+
 def freshness_history(conn: sqlite3.Connection, snapshots: int = 30) -> list[dict]:
     """Per source: the last N freshness snapshots, oldest first."""
     sources = [

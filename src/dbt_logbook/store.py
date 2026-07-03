@@ -25,7 +25,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _SCHEMA_V1 = """
 CREATE TABLE schema_meta (
@@ -84,9 +84,17 @@ CREATE TABLE source_freshness (
 CREATE INDEX idx_source_freshness_by_source ON source_freshness (unique_id, snapshotted_at);
 """
 
+# v3: warehouse volume signals from adapter_response (exact on BigQuery;
+# absent elsewhere - cost estimates fall back to duration x configured rate).
+_SCHEMA_V3 = """
+ALTER TABLE node_results ADD COLUMN bytes_processed INTEGER;
+ALTER TABLE node_results ADD COLUMN bytes_billed INTEGER;
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [
     (1, _SCHEMA_V1),
     (2, _SCHEMA_V2),
+    (3, _SCHEMA_V3),
 ]
 
 

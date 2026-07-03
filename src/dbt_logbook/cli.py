@@ -100,8 +100,11 @@ def ui(
         import webbrowser
 
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    from .paths import load_cost_rate
+
     uvicorn.run(
-        create_app(db, docs_dir=resolve_target_dir(project_dir, target_path)),
+        create_app(db, docs_dir=resolve_target_dir(project_dir, target_path),
+                   cost_rate=load_cost_rate(project_dir)),
         host=host, port=port, log_level="warning",
     )
 
@@ -141,9 +144,10 @@ def demo(
 def mcp() -> None:
     """MCP server (stdio) over this project's run history - for Claude/Cursor."""
     from .mcp_server import build_server
-    from .paths import store_path
+    from .paths import load_cost_rate, store_path
 
-    build_server(store_path(_project_dir_or_exit())).run()
+    project_dir = _project_dir_or_exit()
+    build_server(store_path(project_dir), cost_rate=load_cost_rate(project_dir)).run()
 
 
 @app.command()
@@ -194,8 +198,11 @@ def serve(
     typer.echo(f"dbt-logbook: serving http://{host}:{port} · schedules: {names} "
                f"· watching {target_dir}", err=True)
     try:
+        from .paths import load_cost_rate
+
         uvicorn.run(
-            create_app(db, token=token, docs_dir=target_dir),
+            create_app(db, token=token, docs_dir=target_dir,
+                       cost_rate=load_cost_rate(project_dir)),
             host=host, port=port, log_level="warning",
         )
     finally:
@@ -223,6 +230,39 @@ def state(
         typer.echo(f"dbt-logbook: no successful run with a manifest for env '{env}'", err=True)
         raise typer.Exit(1)
     typer.echo(str(path))
+
+
+@app.command(name="ci-report")
+def ci_report_cmd(
+    state_env: str = typer.Option("default", help="Environment whose last-good state is the baseline."),
+    server: str = typer.Option(None, help="Remote dbt-logbook server URL (CI has no local history)."),
+    token: str = typer.Option(None, help="Bearer token for --server (or DBT_LOGBOOK_TOKEN)."),
+    target_path: str = typer.Option(None, help="Artifact dir of the CI run (default: dbt's)."),
+    fail_on_error: bool = typer.Option(False, help="Exit 1 when the run has failing nodes."),
+) -> None:
+    """Markdown PR report: changed models, downstream impact, failures, and
+    regressions vs recorded history. Pipe into a PR comment."""
+    import os
+
+    from .ci_report import LocalHistory, RemoteHistory, build_report, to_markdown
+    from .paths import load_cost_rate, resolve_target_dir, store_path
+    from .store import open_store
+
+    project_dir = _project_dir_or_exit()
+    target_dir = resolve_target_dir(project_dir, target_path)
+    rate = load_cost_rate(project_dir)
+    if server:
+        history = RemoteHistory(server, state_env, token or os.environ.get("DBT_LOGBOOK_TOKEN"))
+        report = build_report(target_dir, history, cost_rate=rate)
+    else:
+        conn = open_store(store_path(project_dir))
+        try:
+            report = build_report(target_dir, LocalHistory(conn, state_env), cost_rate=rate)
+        finally:
+            conn.close()
+    typer.echo(to_markdown(report, state_env))
+    if fail_on_error and report.verdict == "failing":
+        raise typer.Exit(1)
 
 
 @app.command(name="import")

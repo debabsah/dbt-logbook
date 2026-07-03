@@ -67,14 +67,16 @@ def test_v1_store_migrates_to_v2_with_backup(tmp_path):
     conn.commit()
     conn.close()
 
-    conn = open_store(db)  # migrates v1 -> v2
+    conn = open_store(db)  # migrates v1 -> current
     assert db.with_suffix(".db.bak").exists(), "pre-migration backup missing"
     assert conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 1
     assert conn.execute("SELECT COUNT(*) FROM source_freshness").fetchone()[0] == 0
+    from dbt_logbook.store import SCHEMA_VERSION
+
     version = conn.execute(
         "SELECT value FROM schema_meta WHERE key='schema_version'"
     ).fetchone()[0]
-    assert int(version) == 2
+    assert int(version) == SCHEMA_VERSION
     conn.close()
 
 

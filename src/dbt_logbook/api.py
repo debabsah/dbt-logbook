@@ -20,7 +20,8 @@ WEB_DIR = Path(__file__).parent / "web"
 
 
 def create_app(db_path: Path, token: str | None = None,
-               docs_dir: Path | None = None) -> FastAPI:
+               docs_dir: Path | None = None,
+               cost_rate: float | None = None) -> FastAPI:
     """token: when set, every /api/* request must carry
     `Authorization: Bearer <token>` - the mode for non-localhost serving
     (remote CI runners fetching state). Without a token the API is open,
@@ -118,6 +119,17 @@ def create_app(db_path: Path, token: str | None = None,
         conn = db()
         try:
             return queries.flaky_nodes(conn, window=window, min_flips=min_flips)
+        finally:
+            conn.close()
+
+    @app.get("/api/cost")
+    def cost(window: int = Query(50, le=500), rate: float | None = None):
+        conn = db()
+        try:
+            return queries.cost_summary(
+                conn, rate_per_hour=rate if rate is not None else cost_rate,
+                window_runs=window,
+            )
         finally:
             conn.close()
 

@@ -22,7 +22,7 @@ from . import queries
 from .store import open_store
 
 
-def build_server(db_path: Path) -> FastMCP:
+def build_server(db_path: Path, cost_rate: float | None = None) -> FastMCP:
     mcp = FastMCP(
         "dbt-logbook",
         instructions=(
@@ -115,6 +115,17 @@ def build_server(db_path: Path) -> FastMCP:
                 return queries.diff_runs(c, rows[1]["invocation_id"], rows[0]["invocation_id"])
             except KeyError as e:
                 return {"error": str(e)}
+        finally:
+            c.close()
+
+    @mcp.tool()
+    def get_cost_summary(window: int = 50) -> dict:
+        """Per-model compute spend over recent runs: runtime share always;
+        dollar estimates when a cost rate is configured; exact bytes where the
+        adapter reports them (BigQuery)."""
+        c = conn()
+        try:
+            return queries.cost_summary(c, rate_per_hour=cost_rate, window_runs=window)
         finally:
             c.close()
 

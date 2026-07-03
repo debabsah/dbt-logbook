@@ -195,6 +195,8 @@ def ingest_target_dir(
         if str(r.get("status")).lower() in _FAILURE_STATUSES:
             status = "error"
         adapter = r.get("adapter_response") or {}
+        if not isinstance(adapter, dict):
+            adapter = {}
         node_rows.append(
             (
                 invocation_id,
@@ -202,7 +204,9 @@ def ingest_target_dir(
                 r.get("status"),
                 r.get("execution_time"),
                 r.get("message"),
-                adapter.get("rows_affected") if isinstance(adapter, dict) else None,
+                adapter.get("rows_affected"),
+                adapter.get("bytes_processed"),
+                adapter.get("bytes_billed"),
             )
         )
 
@@ -231,8 +235,9 @@ def ingest_target_dir(
 
     conn.executemany(
         "INSERT OR IGNORE INTO node_results "
-        "(invocation_id, unique_id, status, execution_time, message, rows_affected) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "(invocation_id, unique_id, status, execution_time, message, rows_affected, "
+        " bytes_processed, bytes_billed) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [row for row in node_rows if row[1]],
     )
     if manifest:

@@ -42,3 +42,15 @@ def resolve_target_dir(project_dir: Path, flag: str | None = None) -> Path:
 
 def store_path(project_dir: Path) -> Path:
     return project_dir / ".dbtlogbook" / "history.db"
+
+
+def load_cost_rate(project_dir: Path) -> float | None:
+    """Optional cost.rate_per_hour from dbt-logbook.yml - the universal
+    duration-based spend estimate. Bytes-based signals work without it."""
+    cfg_path = project_dir / "dbt-logbook.yml"
+    try:
+        cfg = yaml.safe_load(cfg_path.read_text()) or {}
+        rate = (cfg.get("cost") or {}).get("rate_per_hour")
+        return float(rate) if rate is not None else None
+    except (OSError, yaml.YAMLError, TypeError, ValueError):
+        return None

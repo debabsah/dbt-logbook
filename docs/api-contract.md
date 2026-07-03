@@ -24,6 +24,7 @@ dbt-logbook mcp        # stdio, run from inside the dbt project
 | `find_flaky_nodes(window, min_flips)` | nodes whose pass/fail flipped repeatedly |
 | `diff_runs(run_a, run_b)` | added/removed/modified nodes between two runs (dbt per-node checksums) |
 | `what_changed()` | diff of the latest run vs the one before |
+| `get_cost_summary(window)` | per-model spend: runtime share, $ estimates (configured rate), exact bytes where the adapter reports them |
 | `state_modified_preview(env, dbt_executable)` | what `--select state:modified` would rebuild vs the last good run of `env` (shells out to `dbt ls`; requires dbt on PATH) |
 
 ## REST API
@@ -44,6 +45,7 @@ Served by `dbt-logbook ui` (localhost only).
 | `GET /api/summary` | store totals + last run |
 | `GET /api/state/{env}/manifest.json` | last-good manifest for state-based CI (`--defer --state`) |
 | `GET /api/freshness?snapshots` | per-source freshness status series over time |
+| `GET /api/cost?window&rate` | per-node spend: runtime share, est. cost (rate), exact bytes where reported |
 | `GET /docs-site/` | generated `dbt docs` output, when present in the target dir |
 
 ## Auth

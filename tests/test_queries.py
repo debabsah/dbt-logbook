@@ -24,7 +24,12 @@ def seed(conn, uid_times_status):
             "VALUES (?, ?, 'prod', ?, ?)",
             (f"run-{i+1}", ts, run_status, ts),
         )
-        conn.executemany("INSERT INTO node_results VALUES (?,?,?,?,?,?)", rows)
+        conn.executemany(
+            "INSERT INTO node_results "
+            "(invocation_id, unique_id, status, execution_time, message, rows_affected) "
+            "VALUES (?,?,?,?,?,?)",
+            rows,
+        )
     conn.commit()
 
 

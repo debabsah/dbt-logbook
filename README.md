@@ -104,6 +104,42 @@ Locally the same thing is one command: `dbt-logbook state --env prod --out ci-st
 Binding beyond localhost requires a token; `/api/*` then demands
 `Authorization: Bearer <token>`.
 
+### The PR comment
+
+After the build, `ci-report` turns the run into a reviewable verdict - changed
+models, downstream blast radius, failures, and anything slower than its own
+history (with cost deltas when a rate is configured):
+
+```yaml
+- name: dbt build against last-good state
+  run: |
+    curl -sf -H "Authorization: Bearer $DBT_LOGBOOK_TOKEN" \
+      "$LOGBOOK_URL/api/state/prod/manifest.json" -o ci-state/manifest.json
+    dbt build --select state:modified+ --defer --state ci-state
+- name: PR report
+  if: always()
+  env:
+    GH_TOKEN: ${{ github.token }}
+  run: |
+    uvx dbt-logbook ci-report --state-env prod \
+      --server "$LOGBOOK_URL" --token "$DBT_LOGBOOK_TOKEN" > report.md
+    gh pr comment ${{ github.event.pull_request.number }} \
+      --edit-last --create-if-none --body-file report.md
+```
+
+## Spend visibility, no credentials
+
+Add a rate to `dbt-logbook.yml` and the Health screen + `get_cost_summary`
+MCP tool show estimated compute cost per model (duration x rate - honest
+estimates, labeled as such). Where the adapter reports exact volume
+(BigQuery's bytes billed), you get real numbers with zero warehouse
+credentials - it's already in the artifacts dbt writes.
+
+```yaml
+cost:
+  rate_per_hour: 3.50   # your warehouse's effective $/hour
+```
+
 ## How it works
 
 dbt-logbook reads only dbt's stable surfaces - the CLI and the artifact files

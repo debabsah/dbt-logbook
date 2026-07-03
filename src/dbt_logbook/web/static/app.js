@@ -159,9 +159,19 @@ async function renderModel(uid) {
 /* ---------- health (regressions, flaky, freshness) ---------- */
 
 async function renderHealth() {
-  const [regs, flaky, fresh] = await Promise.all([
-    api("/regressions"), api("/flaky"), api("/freshness"),
+  const [regs, flaky, fresh, cost] = await Promise.all([
+    api("/regressions"), api("/flaky"), api("/freshness"), api("/cost"),
   ]);
+  const fmtGB = (b) => (b == null ? "" : (b / 1e9).toFixed(2) + " GB");
+  const costRows = cost.nodes
+    .slice(0, 10)
+    .map((n) => `<tr class="clickable" onclick="location.hash='#/model/${esc(n.unique_id)}'">
+      <td>${esc(n.unique_id.split(".").pop())}</td>
+      <td class="num">${n.runs}</td>
+      <td class="num">${fmtSecs(n.total_seconds)}</td>
+      <td class="num">${n.share_pct}%</td>
+      <td class="num">${n.est_cost != null ? "$" + n.est_cost.toFixed(2) : fmtGB(n.bytes_billed)}</td></tr>`)
+    .join("");
   const regRows = regs
     .map((r) => `<tr class="clickable" onclick="location.hash='#/model/${esc(r.unique_id)}'">
       <td>${esc(r.unique_id.split(".").pop())}</td>
@@ -191,6 +201,11 @@ loaded ${esc(fmtTime(p.max_loaded_at))}">${bad ? "✗" : warn ? "!" : "✓"}</a>
     })
     .join("");
   view.innerHTML = `
+    <div class="card"><h2>Top spenders (last ${cost.window_runs} runs${cost.rate_per_hour ? `, $${cost.rate_per_hour}/h` : ", set cost.rate_per_hour in dbt-logbook.yml for $ estimates"})</h2>
+      ${cost.nodes.length ? `<table><thead><tr><th>Model</th><th style="text-align:right">Runs</th>
+        <th style="text-align:right">Total time</th><th style="text-align:right">Share</th>
+        <th style="text-align:right">Est. cost</th></tr></thead><tbody>${costRows}</tbody></table>`
+        : '<div class="empty">No run data yet.</div>'}</div>
     <div class="card"><h2>Duration regressions (latest vs median of prior runs)</h2>
       ${regs.length ? `<table><thead><tr><th>Model</th><th style="text-align:right">Baseline</th>
         <th style="text-align:right">Latest</th><th style="text-align:right">Factor</th></tr></thead>
