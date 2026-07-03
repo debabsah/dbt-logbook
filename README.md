@@ -58,6 +58,32 @@ Then ask: *"what broke last night?"*, *"which models got slower this week?"*,
 *"what would state:modified rebuild?"*. Full tool list and REST equivalents:
 [docs/api-contract.md](docs/api-contract.md).
 
+## Run it as the platform (scheduler + alerts)
+
+One process replaces cron + hope. Drop a `dbt-logbook.yml` in the project root:
+
+```yaml
+schedules:
+  hourly:
+    cron: "0 * * * *"
+    command: dbt build
+    retries: 2
+notify:
+  slack_webhook: https://hooks.slack.com/services/...   # or teams_webhook
+  on: [failure, recovery]
+```
+
+```
+dbt-logbook serve
+```
+
+You get: cron scheduling with retries, every run recorded, a Slack/Teams ping
+on new failures and on recovery, auto-import of runs that happen outside the
+scheduler (a `target/` watcher), and the UI - all one process, localhost only.
+
+Keep it alive the boring way: `docker run --restart unless-stopped ...` or a
+systemd unit with `Restart=on-failure`.
+
 ## How it works
 
 dbt-logbook reads only dbt's stable surfaces - the CLI and the artifact files

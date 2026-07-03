@@ -128,6 +128,57 @@ def mcp() -> None:
     build_server(store_path(_project_dir_or_exit())).run()
 
 
+@app.command()
+def serve(
+    port: int = typer.Option(8080, help="Port for UI + API."),
+    host: str = typer.Option("127.0.0.1", help="Bind address."),
+    env: str = typer.Option(None, help="Environment label for watcher-imported runs."),
+    target_path: str = typer.Option(None, help="Override artifact dir to watch."),
+) -> None:
+    """Long-lived platform: scheduler + watcher + alerts + UI. Reads dbt-logbook.yml."""
+    import threading
+
+    import uvicorn
+
+    from .api import create_app
+    from .paths import resolve_target_dir, store_path
+    from .serve import Runner, load_config, scheduler_loop, watcher_loop
+    from .store import open_store
+
+    project_dir = _project_dir_or_exit()
+    try:
+        schedules, notify = load_config(project_dir)
+    except ValueError as e:
+        typer.echo(f"dbt-logbook: config error: {e}", err=True)
+        raise typer.Exit(2)
+
+    db = store_path(project_dir)
+    open_store(db).close()  # create/migrate up front
+    stop = threading.Event()
+    target_dir = resolve_target_dir(project_dir, target_path)
+    threads = [
+        threading.Thread(
+            target=watcher_loop, args=(project_dir, target_dir, env, stop), daemon=True
+        )
+    ]
+    if schedules:
+        runner = Runner(project_dir, notify)
+        threads.append(
+            threading.Thread(
+                target=scheduler_loop, args=(schedules, runner, stop), daemon=True
+            )
+        )
+    for t in threads:
+        t.start()
+    names = ", ".join(s.name for s in schedules) or "none"
+    typer.echo(f"dbt-logbook: serving http://{host}:{port} · schedules: {names} "
+               f"· watching {target_dir}", err=True)
+    try:
+        uvicorn.run(create_app(db), host=host, port=port, log_level="warning")
+    finally:
+        stop.set()
+
+
 @app.command(name="import")
 def import_cmd(
     path: str = typer.Argument(None, help="Artifact dir to ingest (default: the project's target path)."),
