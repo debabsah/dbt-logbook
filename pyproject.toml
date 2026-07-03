@@ -1,6 +1,6 @@
 [project]
 name = "dbt-logbook"
-version = "0.5.0"
+version = "0.5.1"
 description = "Run history for dbt. Every invocation recorded, nothing overwritten."
 readme = "README.md"
 license = "Apache-2.0"

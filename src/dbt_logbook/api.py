@@ -54,7 +54,7 @@ def create_app(db_path: Path, token: str | None = None,
 
     @app.get("/api/state/{env}/manifest.json")
     def state_manifest(env: str):
-        """Last-good manifest for `env` - the state-based CI state endpoint.
+        """Last-good manifest for `env` - the CI state endpoint.
         Use with: dbt build --select state:modified --defer --state <dir>."""
         import tempfile
 
